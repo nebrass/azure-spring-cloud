@@ -1,0 +1,67 @@
+version: '2.1'
+services:
+  cloud-config-server:
+    image: "demo/cloud-config-server"
+    environment:
+      EUREKA_SERVER_NAME: ${EUREKA_SERVER_NAME}
+      CONFIG_SERVER_NAME: ${CONFIG_SERVER_NAME}
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://cloud-config-server:8888/actuator/health"]
+      interval: 5s
+      retries: 20
+
+  cloud-gateway:
+    image: "demo/cloud-gateway"
+    environment:
+      EUREKA_SERVER_NAME: ${EUREKA_SERVER_NAME}
+      CONFIG_SERVER_NAME: ${CONFIG_SERVER_NAME}
+    ports:
+      - "9999:9999"
+    links:
+      - cloud-eureka-server
+      - cloud-config-server
+    depends_on:
+      cloud-eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://cloud-gateway:9999/actuator/health"]
+      interval: 5s
+      retries: 20
+
+  cloud-eureka-server:
+    image: "demo/cloud-eureka-server"
+    environment:
+      EUREKA_SERVER_NAME: ${EUREKA_SERVER_NAME}
+      CONFIG_SERVER_NAME: ${CONFIG_SERVER_NAME}
+    ports:
+      - "8761:8761"
+    links:
+      - cloud-config-server
+    depends_on:
+      cloud-config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://cloud-eureka-server:8761/actuator/health"]
+      interval: 5s
+      retries: 20
+
+  azure-eventing:
+    image: "demo/azure-eventing"
+    environment:
+      EUREKA_SERVER_NAME: ${EUREKA_SERVER_NAME}
+      CONFIG_SERVER_NAME: ${CONFIG_SERVER_NAME}
+    ports:
+      - "8999:8999"
+    links:
+      - cloud-eureka-server
+      - cloud-config-server
+    depends_on:
+      cloud-eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://azure-eventing:8999/actuator/health"]
+      interval: 5s
+      retries: 20
+
